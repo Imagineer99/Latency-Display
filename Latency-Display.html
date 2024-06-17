@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latency Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #121212;
+        }
+        .latency-container {
+            position: relative;
+            width: 300px;
+            height: 40px;
+            background: #34495E;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+        .latency-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            border-radius: 20px;
+            transition: background 1s ease-in-out;
+        }
+        .latency-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="latency-container">
+        <div class="latency-bar"></div>
+        <div class="latency-text">0 ms / 0 ms</div>
+    </div>
+
+    <script>
+        const latencyBar = document.querySelector('.latency-bar');
+        const latencyText = document.querySelector('.latency-text');
+
+        async function measureLatency(url) {
+            const startTime = performance.now();
+            try {
+                await fetch(url, { mode: 'no-cors' }); // Use the server's URL
+            } catch (e) {
+                console.error('Error measuring latency:', e);
+            }
+            const endTime = performance.now();
+            return Math.round(endTime - startTime);
+        }
+
+        function interpolateColor(color1, color2, factor) {
+            const hex = (x) => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            };
+            const r = Math.ceil(parseInt(color1.substring(1, 3), 16) * (1 - factor) + parseInt(color2.substring(1, 3), 16) * factor);
+            const g = Math.ceil(parseInt(color1.substring(3, 5), 16) * (1 - factor) + parseInt(color2.substring(3, 5), 16) * factor);
+            const b = Math.ceil(parseInt(color1.substring(5, 7), 16) * (1 - factor) + parseInt(color2.substring(5, 7), 16) * factor);
+            return `#${hex(r)}${hex(g)}${hex(b)}`;
+        }
+
+        function updateLatencyDisplay(latency1, latency2) {
+            const totalLatency = latency1 + latency2;
+            const percentage1 = (latency1 / totalLatency) * 100;
+            const percentage2 = (latency2 / totalLatency) * 100;
+
+            // Colors
+            const color1 = '#00b4d8'; // Green
+            const color2 = '#F1C40F'; // Yellow
+            const color3 = '#76c893'; // Red
+
+            // Calculate gradient stops
+            const stop1 = interpolateColor(color1, color2, latency1 / totalLatency);
+            const stop2 = interpolateColor(color2, color3, latency2 / totalLatency);
+
+            // Set gradient
+            latencyBar.style.background = `linear-gradient(to right, ${color1} 0%, ${stop1} ${percentage1}%, ${stop2} ${percentage1}%, ${color3} 100%)`;
+
+            // Update text
+            latencyText.textContent = `${latency1} ms / ${latency2} ms`;
+        }
+
+        async function updateLatency() {
+            const latency1 = await measureLatency('https://chatgpt.com/'); // Use the first server's URL
+            const latency2 = await measureLatency('https://chatgpt.com/'); // Use the second server's URL
+
+            updateLatencyDisplay(latency1, latency2);
+        }
+
+        async function immediateLatencyUpdate() {
+            while (true) {
+                await updateLatency();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Update every second
+            }
+        }
+
+        immediateLatencyUpdate();
+    </script>
+</body>
+</html>
